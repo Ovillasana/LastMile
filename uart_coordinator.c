@@ -63,11 +63,8 @@ void *mainThread(void *arg0) {
     UART_control(uart0, UART_CMD_RXDISABLE, NULL);
 
     const char lineBreak[] = "\r\n";
-    const char loop[] = "Entering while loop";
+    const char coord[] = "==========================================\n\r\tCOORDINATOR\n\r==========================================";
     const char wegot[] = "outside while loop";
-    const char dot[] = ".";
-
-
 
     char message[255] = {0x00};
 
@@ -76,11 +73,10 @@ void *mainThread(void *arg0) {
     int byte_count = 1;
     int length = 0;
 
+    UART_write(uart0, &coord, sizeof(coord));
+    UART_write(uart0, &lineBreak, sizeof(lineBreak));
 
     while (1) {
-
-        UART_write(uart0, &loop, sizeof(loop));
-        UART_write(uart0, &lineBreak, sizeof(lineBreak));
 
         for (j = 0; j < 255; j++) {
              message[j] = 0x00;
@@ -101,8 +97,6 @@ void *mainThread(void *arg0) {
             }
         }
 
-        UART_write(uart0, &lineBreak, sizeof(lineBreak));
-        UART_write(uart0, &wegot, sizeof(wegot));
         UART_write(uart0, &lineBreak, sizeof(lineBreak));
         UART_write(uart0, &message, sizeof(message));
         UART_write(uart0, &lineBreak, sizeof(lineBreak));
