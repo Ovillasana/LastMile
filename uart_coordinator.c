@@ -88,7 +88,7 @@ void *mainThread(void *arg0) {
                 length = input + 4;
             }
             if (byte_count-1 >= 16) {
-                UART_write(uart0, &input, sizeof(input));
+                //UART_write(uart0, &input, sizeof(input));
                 message[i] = input;
                 i++;
                 if (byte_count-1 == length - 1) {

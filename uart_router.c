@@ -1,3 +1,4 @@
+
 #include <unistd.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -12,12 +13,16 @@
 /* Example/Board Header files */
 #include "Board.h"
 
+
+
 /*
  *  ======== mainThread ========
  */
 
-void *mainThread(void *arg0) {
-    char input;
+
+void *mainThread(void *arg0, unsigned char frameMain[])
+{
+
     UART_Handle uart0;
     UART_Handle uart1;
 
@@ -63,56 +68,69 @@ void *mainThread(void *arg0) {
     UART_control(uart0, UART_CMD_RXDISABLE, NULL);
 
     const char lineBreak[] = "\r\n";
-    const char coord[] = "==========================================\n\r\tCOORDINATOR\n\r==========================================";
-    const char wegot[] = "outside while loop";
 
-    char message[255] = {0x00};
-
-    int i = 0;
-    int j = 0;
-    int byte_count = 1;
-    int length = 0;
-
-    UART_write(uart0, &coord, sizeof(coord));
-    UART_write(uart0, &lineBreak, sizeof(lineBreak));
-
+    /* Write to UART0 & 1 */
     while (1) {
-
-        for (j = 0; j < 255; j++) {
-             message[j] = 0x00;
-            }
-
-        while (UART_read(uart1, &input, sizeof(input))) {
-            byte_count++;
-            if (byte_count-1 == 3) {
-                length = input + 4;
-            }
-            if (byte_count-1 >= 16) {
-                //UART_write(uart0, &input, sizeof(input));
-                message[i] = input;
-                i++;
-                if (byte_count-1 == length - 1) {
-                    break;
-                }
-            }
-        }
-
-        UART_write(uart0, &lineBreak, sizeof(lineBreak));
-        UART_write(uart0, &message, sizeof(message));
-        UART_write(uart0, &lineBreak, sizeof(lineBreak));
-        i = 0;
-        j = 0;
-        byte_count = 0;
-        length = 0;
-
-
-        /***
-         * KORY THIS IS THE CODE FOR THE GATEWAY NODE
-         * WE SHOULD JUST POST DATA BEING SENT FROM THE ROUTERS TO THE HTTP SERVER YOU CREATED,
-         * THE COORDINATOR SHOULD NOT SEND MESSAGES BACK AS IT WILL GET VERY MESSY
-         * THE MESSAGE IS IN THE CHAR ARRAY MESSAGE[]
+        /*KORY ADD YOUR CODE HERE, WHEN YOU RECEIVE A TEXT FROM
+         * THE USER PASS THAT INTO THE TEXT CHAR[]
          *
-         */
+         *
+         * */
+
+    unsigned char text[]  = "Hello world testing custom packet"; // Kory here is where you add the packet
+    unsigned char startDelimiter[1] = {0x7E};
+    unsigned char length[2] = {0x00, 0x0E}; //need to calculate this
+    unsigned char frameTypeAndID[2] = {0x10, 0x01};
+    unsigned char destAddresses[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0XFE};
+    unsigned char broadcastRadiusAndOptions[2] = {0x00, 0x00};
+
+    int textSize = strlen(text);
+    unsigned char rfData[(int) textSize + 1]; // plus 1 for the checksum
+    strcpy(rfData, text);
+
+    //calculate length
+    int lengthSize = 0x0E + (int) textSize;
+    length[1] = lengthSize;
+
+    int byteCount = 18 + (int)textSize;
+
+    //calculate checksum
+    int sum = 0x10 + 0x01 + 0x00 + 0x00 + 0x00 + 0x00 + 0x00 + 0x00 + 0x00 + 0x00 + 0xFF + 0xFE;
+    int i;
+    for (i = 0; i < textSize; i++) {
+        sum += (int) rfData[i];
+    }
+    int low8bits = sum & 0xFF;
+    int checksumInt = 0xFF - low8bits;
+    rfData[textSize] = checksumInt;
+
+    unsigned char everythingButData[] = {0x7E, 0x00, 0x0E, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                         0xFF, 0XFE, 0x00, 0x00};
+
+    everythingButData[2] = length[1];
+    int total_length = 17 + textSize + 1;
+
+    unsigned char totalPacket[total_length];
+
+    for (i = 0; i < 17; i++) {
+        totalPacket[i] = everythingButData[i];
+    }
+
+    int j = 0;
+    for (i = 17; i < byteCount; i++) {
+        totalPacket[i] = rfData[j];
+        j++;
+    }
+
+        //write to console
+        UART_write(uart0, totalPacket, sizeof(totalPacket));
+		//write to zigbee
+        UART_write(uart1, totalPacket, sizeof(totalPacket));
+        UART_write(uart0, lineBreak, sizeof(lineBreak));
+
+        sleep(1);
+
+
 
     }//while
 }//main
